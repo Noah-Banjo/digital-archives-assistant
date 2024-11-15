@@ -1,6 +1,5 @@
 import streamlit as st
 import openai
-import speech_recognition as sr
 
 # Initialize OpenAI client using Streamlit secrets
 client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -28,9 +27,6 @@ if 'messages' not in st.session_state:
         {"role": "system", "content": ARCHIVIST_ROLE}
     ]
 
-if 'audio_text' not in st.session_state:
-    st.session_state['audio_text'] = ""
-
 def get_assistant_response(messages):
     try:
         response = client.chat.completions.create(
@@ -38,25 +34,6 @@ def get_assistant_response(messages):
             messages=messages
         )
         return response.choices[0].message.content
-    except Exception as e:
-        st.error(f"Error: {str(e)}")
-        return None
-
-def transcribe_audio():
-    r = sr.Recognizer()
-    try:
-        with sr.Microphone() as source:
-            st.markdown("🎤 **Listening... Speak now!**")
-            audio = r.listen(source, timeout=5, phrase_time_limit=10)
-            st.markdown("Processing...")
-            text = r.recognize_google(audio)
-            return text
-    except sr.RequestError:
-        st.error("Could not request results. Check your internet connection.")
-        return None
-    except sr.UnknownValueError:
-        st.error("Could not understand audio. Please try again.")
-        return None
     except Exception as e:
         st.error(f"Error: {str(e)}")
         return None
@@ -88,42 +65,23 @@ st.markdown("""
 I'm your digital archivist assistant. How can I help you today?
 """)
 
-# Input method selection
-st.markdown("### Input Method")
-input_method = st.radio("Choose input method:", ["Text", "Voice"])
+# File upload option
+uploaded_file = st.file_uploader("Upload a document for analysis (optional)", type=['pdf', 'txt', 'doc', 'docx'])
+if uploaded_file is not None:
+    st.success(f"File uploaded: {uploaded_file.name}")
+    st.info("You can now ask questions about the uploaded document.")
 
-if input_method == "Voice":
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        if st.button("🎤 Record", type="primary"):
-            transcribed_text = transcribe_audio()
-            if transcribed_text:
-                st.session_state['audio_text'] = transcribed_text
-    
-    with col2:
-        if st.session_state.get('audio_text'):
-            st.success(f"Transcribed: {st.session_state['audio_text']}")
-            if st.button("✅ Send"):
-                user_input = st.session_state['audio_text']
-                context_message = f"[Service: {service}] {user_input}"
-                st.session_state['messages'].append({"role": "user", "content": context_message})
-                response = get_assistant_response(st.session_state['messages'])
-                if response:
-                    st.session_state['messages'].append({"role": "assistant", "content": response})
-                st.session_state['audio_text'] = ""  # Clear the audio text
+# Chat interface
+with st.form(key='message_form', clear_on_submit=True):
+    user_input = st.text_input("Type your message:", key='input')
+    submit_button = st.form_submit_button(label='Send', use_container_width=True)
 
-else:
-    # Text input form
-    with st.form(key='message_form', clear_on_submit=True):
-        user_input = st.text_input("Type your message:", key='input')
-        submit_button = st.form_submit_button(label='Send', use_container_width=True)
-
-        if submit_button and user_input:
-            context_message = f"[Service: {service}] {user_input}"
-            st.session_state['messages'].append({"role": "user", "content": context_message})
-            response = get_assistant_response(st.session_state['messages'])
-            if response:
-                st.session_state['messages'].append({"role": "assistant", "content": response})
+    if submit_button and user_input:
+        context_message = f"[Service: {service}] {user_input}"
+        st.session_state['messages'].append({"role": "user", "content": context_message})
+        response = get_assistant_response(st.session_state['messages'])
+        if response:
+            st.session_state['messages'].append({"role": "assistant", "content": response})
 
 # Display chat history
 if len(st.session_state['messages']) > 1:
