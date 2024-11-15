@@ -97,10 +97,15 @@ def generate_metadata(title, description, material_type, date_created, creator, 
             ]
         )
         
-        # Save to session state
+        # Save to session state with all fields
         metadata_record = {
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "title": title,
+            "description": description,
+            "material_type": material_type,
+            "date_created": date_created,
+            "creator": creator,
+            "subject_terms": subject_terms,
             "metadata": response.choices[0].message.content
         }
         st.session_state['metadata_history'].append(metadata_record)
@@ -111,19 +116,84 @@ def generate_metadata(title, description, material_type, date_created, creator, 
         return None
 
 def export_metadata_to_csv(metadata_records):
-    """Convert metadata records to CSV format"""
-    # Create a list of dictionaries with flattened structure
-    flat_records = []
-    for record in metadata_records:
-        flat_record = {
-            'timestamp': record['timestamp'],
-            'title': record['title'],
-            'metadata_content': record['metadata']
-        }
-        flat_records.append(flat_record)
+    """Convert metadata records to CSV format with detailed content"""
+    # Create a list to store rows
+    rows = []
     
-    df = pd.DataFrame(flat_records)
-    return df.to_csv().encode('utf-8')
+    # Add headers
+    headers = [
+        "Timestamp",
+        "Title",
+        "Description",
+        "Material Type",
+        "Date Created",
+        "Creator",
+        "Subject Terms",
+        "Dublin Core Elements",
+        "DACS Elements",
+        "Physical Description",
+        "Access and Use",
+        "Administrative Information",
+        "Full Metadata"
+    ]
+    
+    for record in metadata_records:
+        # Split the metadata content into sections
+        metadata_text = record['metadata']
+        sections = metadata_text.split('\n\n')
+        
+        # Extract individual sections
+        dublin_core = ""
+        dacs_elements = ""
+        physical_desc = ""
+        access_use = ""
+        admin_info = ""
+        
+        current_section = ""
+        for section in sections:
+            if "Dublin Core Elements" in section:
+                dublin_core = section
+                current_section = "dublin_core"
+            elif "DACS Elements" in section:
+                dacs_elements = section
+                current_section = "dacs"
+            elif "Physical Description" in section:
+                physical_desc = section
+                current_section = "physical"
+            elif "Access and Use" in section:
+                access_use = section
+                current_section = "access"
+            elif "Administrative Information" in section:
+                admin_info = section
+                current_section = "admin"
+            elif current_section:  # Append content to current section
+                locals()[current_section] += "\n\n" + section
+        
+        # Create a row for each record
+        row = {
+            "Timestamp": record['timestamp'],
+            "Title": record.get('title', ''),
+            "Description": record.get('description', ''),
+            "Material Type": record.get('material_type', ''),
+            "Date Created": record.get('date_created', ''),
+            "Creator": record.get('creator', ''),
+            "Subject Terms": record.get('subject_terms', ''),
+            "Dublin Core Elements": dublin_core,
+            "DACS Elements": dacs_elements,
+            "Physical Description": physical_desc,
+            "Access and Use": access_use,
+            "Administrative Information": admin_info,
+            "Full Metadata": metadata_text
+        }
+        rows.append(row)
+    
+    # Create DataFrame
+    df = pd.DataFrame(rows)
+    
+    # Reorder columns to match headers
+    df = df[headers]
+    
+    return df.to_csv(index=False).encode('utf-8')
 
 def export_metadata_to_json(metadata_records):
     """Convert metadata records to JSON format"""
