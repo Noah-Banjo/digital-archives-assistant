@@ -1,5 +1,8 @@
 import streamlit as st
 import openai
+import pandas as pd
+from datetime import datetime
+import json
 
 # Initialize OpenAI client using Streamlit secrets
 client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -44,7 +47,7 @@ def generate_metadata(title, description, material_type, date_created, creator, 
     """Generate structured metadata based on user input"""
     try:
         # Create metadata prompt for GPT
-        prompt = f"""Generate comprehensive archival metadata for the following item using Dublin Core and DACS standards.
+        prompt = f"""Generate detailed archival metadata in Markdown format for the following item using Dublin Core and DACS standards.
         
         Item Information:
         - Title: {title}
@@ -54,17 +57,42 @@ def generate_metadata(title, description, material_type, date_created, creator, 
         - Creator: {creator}
         - Subject Terms: {subject_terms}
         
-        Please include:
-        1. All relevant Dublin Core elements
-        2. DACS-compliant description
-        3. Suggested access points
-        4. Preservation recommendations
-        5. Additional notes if necessary"""
+        Please include the following sections with clear headers:
+
+        1. Dublin Core Elements
+           - Include all relevant DC elements (Title, Creator, Subject, Description, Date, Type, Format, etc.)
+           
+        2. DACS Elements
+           - Reference Code
+           - Title
+           - Date
+           - Extent
+           - Creator
+           - Scope and Content
+           - Arrangement
+           - Access Points
+           
+        3. Physical Description
+           - Detailed description of physical characteristics
+           - Preservation condition
+           - Storage requirements
+           
+        4. Access and Use
+           - Access restrictions
+           - Copyright status
+           - Preferred citation
+           
+        5. Administrative Information
+           - Acquisition information
+           - Processing information
+           - Related materials
+        
+        Format the output in clear Markdown with proper headers and bullet points."""
 
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are an expert archivist specializing in metadata creation."},
+                {"role": "system", "content": "You are an expert archivist specializing in metadata creation following archival standards."},
                 {"role": "user", "content": prompt}
             ]
         )
@@ -108,13 +136,13 @@ with st.sidebar:
     elif service == "Preservation Guide":
         st.info("Get guidance on document preservation and handling.")
     elif service == "Metadata Generator":
-        st.info("Generate standardized metadata for archival materials.")
+        st.info("Generate standardized metadata following Dublin Core and DACS standards.")
 
 # Main content area
 if service == "Metadata Generator":
     st.markdown("## 📋 Metadata Generator")
     st.markdown("""
-    Generate standardized metadata following Dublin Core and DACS standards for your archival materials.
+    This tool generates standardized metadata following Dublin Core and DACS standards for your archival materials.
     Fill in the form below to create detailed metadata records.
     """)
 
@@ -122,25 +150,32 @@ if service == "Metadata Generator":
         # Basic Information
         st.subheader("Basic Information")
         title = st.text_input("Title of Item/Collection*")
-        description = st.text_area("Description*", help="Provide a brief description of the material")
+        description = st.text_area("Description*", 
+            help="Provide a brief description of the material")
         
         # Material Details
         st.subheader("Material Details")
         col1, col2 = st.columns(2)
         with col1:
-            material_type = st.selectbox("Material Type*", 
-                ["Textual Records", "Photographs", "Audio Recordings", "Video Recordings", 
-                 "Digital Records", "Artifacts", "Correspondence", "Publications",
-                 "Maps/Plans", "Artwork"])
+            material_type = st.selectbox(
+                "Material Type*", 
+                ["Textual Records", "Photographs", "Audio Recordings", 
+                 "Video Recordings", "Digital Records", "Artifacts", 
+                 "Correspondence", "Publications", "Maps/Plans", "Artwork"]
+            )
         with col2:
-            date_created = st.text_input("Date Created*", 
-                help="Enter date or date range (YYYY or YYYY-YYYY)")
+            date_created = st.text_input(
+                "Date Created*", 
+                help="Enter date or date range (YYYY or YYYY-YYYY)"
+            )
 
         # Creator and Subject Terms
         st.subheader("Creator and Subject Information")
         creator = st.text_input("Creator*", help="Enter the name of the creator(s)")
-        subject_terms = st.text_area("Subject Terms*", 
-            help="Enter subject terms separated by commas")
+        subject_terms = st.text_area(
+            "Subject Terms*", 
+            help="Enter subject terms separated by commas"
+        )
 
         submit_button = st.form_submit_button("Generate Metadata")
         
