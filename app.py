@@ -117,8 +117,32 @@ js_code = """
 </script>
 """
 
-# Rest of your existing code remains the same...
-[Previous ARCHIVIST_ROLE, session state, and functions remain unchanged]
+# Define the archivist's knowledge
+ARCHIVIST_ROLE = """
+You are an experienced archivist helping researchers with:
+1. Finding and accessing materials
+2. Document handling guidance
+3. Research methodologies
+4. Citation methods
+5. Preservation advice
+"""
+
+# Initialize session state
+if 'messages' not in st.session_state:
+    st.session_state['messages'] = [
+        {"role": "system", "content": ARCHIVIST_ROLE}
+    ]
+
+def get_assistant_response(messages):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=messages
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+        return None
 
 # Main interface
 st.title("📚 Digital Archives Reference Desk")
