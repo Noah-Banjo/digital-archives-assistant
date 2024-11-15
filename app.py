@@ -112,8 +112,22 @@ def generate_metadata(title, description, material_type, date_created, creator, 
 
 def export_metadata_to_csv(metadata_records):
     """Convert metadata records to CSV format"""
-    df = pd.DataFrame(metadata_records)
-    return df.to_csv(index=False)
+    # Create a list of dictionaries with flattened structure
+    flat_records = []
+    for record in metadata_records:
+        flat_record = {
+            'timestamp': record['timestamp'],
+            'title': record['title'],
+            'metadata_content': record['metadata']
+        }
+        flat_records.append(flat_record)
+    
+    df = pd.DataFrame(flat_records)
+    return df.to_csv().encode('utf-8')
+
+def export_metadata_to_json(metadata_records):
+    """Convert metadata records to JSON format"""
+    return json.dumps(metadata_records, indent=2).encode('utf-8')
 
 # Main interface
 st.title("📚 Digital Archives Reference Desk")
@@ -190,33 +204,33 @@ if service == "Metadata Generator":
                         st.success("Metadata generated successfully!")
                         st.markdown("### Generated Metadata:")
                         st.markdown(metadata)
-                        
-                        # Export options
-                        st.markdown("### Export Options")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            if st.button("Download as CSV"):
-                                csv_data = export_metadata_to_csv(st.session_state['metadata_history'])
-                                st.download_button(
-                                    label="Download CSV",
-                                    data=csv_data,
-                                    file_name=f"metadata_export_{datetime.now().strftime('%Y%m%d')}.csv",
-                                    mime="text/csv"
-                                )
-                        with col2:
-                            if st.button("Download as JSON"):
-                                json_data = json.dumps(st.session_state['metadata_history'], indent=2)
-                                st.download_button(
-                                    label="Download JSON",
-                                    data=json_data,
-                                    file_name=f"metadata_export_{datetime.now().strftime('%Y%m%d')}.json",
-                                    mime="application/json"
-                                )
-            else:
-                st.error("Please fill in all required fields marked with *")
 
-    # Show metadata history
+    # Export options (outside the form)
     if st.session_state['metadata_history']:
+        st.markdown("### Export Options")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv_data = export_metadata_to_csv(st.session_state['metadata_history'])
+            st.download_button(
+                label="📥 Download as CSV",
+                data=csv_data,
+                file_name=f"metadata_export_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                key="csv_download"
+            )
+        
+        with col2:
+            json_data = export_metadata_to_json(st.session_state['metadata_history'])
+            st.download_button(
+                label="📥 Download as JSON",
+                data=json_data,
+                file_name=f"metadata_export_{datetime.now().strftime('%Y%m%d')}.json",
+                mime="application/json",
+                key="json_download"
+            )
+
+        # Show metadata history
         st.markdown("### Previous Metadata Records")
         for record in st.session_state['metadata_history']:
             with st.expander(f"{record['title']} - {record['timestamp']}"):
