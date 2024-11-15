@@ -12,8 +12,8 @@ st.set_page_config(
     layout="wide"
 )
 
-# JavaScript code for speech recognition with auto-submit
-js_code = """
+# JavaScript code for speech recognition
+js_code = '''
 <div>
     <button id="startButton" 
             style="background-color: #FF4B4B; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
@@ -21,35 +21,28 @@ js_code = """
     </button>
     <p id="status" style="margin-top: 10px;"></p>
     <p id="output" style="margin-top: 10px;"></p>
-    <button id="sendButton" 
-            style="display: none; background-color: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">
-        ✉️ Send Message
-    </button>
 </div>
 
 <script>
-    var outputText = "";
     const startButton = document.getElementById('startButton');
-    const sendButton = document.getElementById('sendButton');
     const status = document.getElementById('status');
     const output = document.getElementById('output');
     
-    function updateStreamlit() {
-        // Find the textarea in the Streamlit form
+    function updateStreamlitInput(text) {
+        // Find the textarea and submit button in the Streamlit form
         const textarea = window.parent.document.querySelector('textarea');
-        if (textarea) {
-            textarea.value = outputText;
-            // Trigger input event for Streamlit to recognize the change
-            const event = new Event('input', { bubbles: true });
-            textarea.dispatchEvent(event);
-        }
-    }
-
-    function submitForm() {
-        // Find and click the form's submit button
         const submitButton = window.parent.document.querySelector('form button[type="submit"]');
-        if (submitButton) {
-            submitButton.click();
+        
+        if (textarea && submitButton) {
+            // Update textarea value
+            textarea.value = text;
+            
+            // Trigger input event
+            const inputEvent = new Event('input', { bubbles: true });
+            textarea.dispatchEvent(inputEvent);
+            
+            // Focus on textarea
+            textarea.focus();
         }
     }
     
@@ -64,42 +57,29 @@ js_code = """
                 startButton.textContent = '⏹️ Stop Recording';
                 startButton.style.backgroundColor = '#4CAF50';
                 status.textContent = 'Listening...';
-                sendButton.style.display = 'none';
-                outputText = "";
-                output.textContent = "";
-                updateStreamlit();
+                output.textContent = '';
             } else {
                 recognition.stop();
                 startButton.textContent = '🎤 Start Recording';
                 startButton.style.backgroundColor = '#FF4B4B';
-                status.textContent = 'Recording stopped';
-                if (outputText.trim()) {
-                    sendButton.style.display = 'inline-block';
-                }
+                status.textContent = 'Click Send to submit your message';
             }
         });
         
-        sendButton.addEventListener('click', () => {
-            submitForm();
-            sendButton.style.display = 'none';
-        });
-        
         recognition.onresult = (event) => {
-            outputText = Array.from(event.results)
+            const transcript = Array.from(event.results)
                 .map(result => result[0].transcript)
                 .join('');
-            output.textContent = 'Transcribed: ' + outputText;
-            updateStreamlit();
+            
+            output.textContent = 'Transcribed: ' + transcript;
+            updateStreamlitInput(transcript);
         };
         
         recognition.onend = () => {
             startButton.textContent = '🎤 Start Recording';
             startButton.style.backgroundColor = '#FF4B4B';
-            if (outputText.trim()) {
-                status.textContent = 'Recording finished. Click "Send Message" to submit.';
-                sendButton.style.display = 'inline-block';
-            } else {
-                status.textContent = '';
+            if (!status.textContent.includes('Error')) {
+                status.textContent = 'Click Send to submit your message';
             }
         };
         
@@ -108,14 +88,13 @@ js_code = """
             status.textContent = 'Error: ' + event.error;
             startButton.textContent = '🎤 Start Recording';
             startButton.style.backgroundColor = '#FF4B4B';
-            sendButton.style.display = 'none';
         };
     } else {
         startButton.style.display = 'none';
-        status.textContent = 'Speech recognition is not supported in this browser.';
+        status.textContent = 'Speech recognition is not supported in this browser. Please use Chrome.';
     }
 </script>
-"""
+'''
 
 # Define the archivist's knowledge
 ARCHIVIST_ROLE = """
@@ -171,21 +150,17 @@ st.markdown("""
 I'm your digital archivist assistant. How can I help you today?
 """)
 
-# Add speech recognition component
-st.markdown("### Voice Input")
-html(js_code, height=200)
-
-# File upload option
-uploaded_file = st.file_uploader("Upload a document for analysis (optional)", type=['pdf', 'txt', 'doc', 'docx'])
-if uploaded_file is not None:
-    st.success(f"File uploaded: {uploaded_file.name}")
-    st.info("You can now ask questions about the uploaded document.")
+# Add voice input section
+st.markdown("### Voice Input (Optional)")
+st.info("🎤 Click 'Start Recording' to use voice input. Works best in Chrome browser.")
+html(js_code, height=150)
 
 # Chat interface
-st.markdown("### Ask your question:")
 with st.form(key='message_form', clear_on_submit=True):
-    user_input = st.text_input("Type your message (or use voice input above):", key='input')
-    submit_button = st.form_submit_button(label='Send', use_container_width=True)
+    user_input = st.text_area("Type your message (or use voice input above):", key='input', height=100)
+    col1, col2, col3 = st.columns([1,1,1])
+    with col2:
+        submit_button = st.form_submit_button(label='Send Message', use_container_width=True)
 
     if submit_button and user_input:
         context_message = f"[Service: {service}] {user_input}"
