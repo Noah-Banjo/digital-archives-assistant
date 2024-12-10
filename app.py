@@ -48,7 +48,7 @@ def generate_metadata(title, description, material_type, date_created, creator, 
     try:
         # Create metadata prompt for GPT
         prompt = f"""Generate detailed archival metadata in Markdown format for the following item using Dublin Core and DACS standards.
-        
+
         Item Information:
         - Title: {title}
         - Description: {description}
@@ -56,12 +56,12 @@ def generate_metadata(title, description, material_type, date_created, creator, 
         - Date Created: {date_created}
         - Creator: {creator}
         - Subject Terms: {subject_terms}
-        
+
         Please include the following sections with clear headers:
 
         1. Dublin Core Elements
            - Include all relevant DC elements (Title, Creator, Subject, Description, Date, Type, Format, etc.)
-           
+
         2. DACS Elements
            - Reference Code
            - Title
@@ -71,22 +71,22 @@ def generate_metadata(title, description, material_type, date_created, creator, 
            - Scope and Content
            - Arrangement
            - Access Points
-           
+
         3. Physical Description
            - Detailed description of physical characteristics
            - Preservation condition
            - Storage requirements
-           
+
         4. Access and Use
            - Access restrictions
            - Copyright status
            - Preferred citation
-           
+
         5. Administrative Information
            - Acquisition information
            - Processing information
            - Related materials
-        
+
         Format the output in clear Markdown with proper headers and bullet points."""
 
         response = client.chat.completions.create(
@@ -96,7 +96,7 @@ def generate_metadata(title, description, material_type, date_created, creator, 
                 {"role": "user", "content": prompt}
             ]
         )
-        
+
         # Save to session state with all fields
         metadata_record = {
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -109,11 +109,13 @@ def generate_metadata(title, description, material_type, date_created, creator, 
             "metadata": response.choices[0].message.content
         }
         st.session_state['metadata_history'].append(metadata_record)
-        
+
         return response.choices[0].message.content
     except Exception as e:
         st.error(f"Error generating metadata: {str(e)}")
         return None
+
+# Replace only the export_metadata_to_csv function in your app.py with this version:
 
 def export_metadata_to_csv(metadata_records):
     """Convert metadata records to CSV format with detailed content"""
@@ -129,61 +131,20 @@ def export_metadata_to_csv(metadata_records):
         "Date Created",
         "Creator",
         "Subject Terms",
-        "Dublin Core Elements",
-        "DACS Elements",
-        "Physical Description",
-        "Access and Use",
-        "Administrative Information",
         "Full Metadata"
     ]
     
     for record in metadata_records:
-        # Split the metadata content into sections
-        metadata_text = record['metadata']
-        sections = metadata_text.split('\n\n')
-        
-        # Extract individual sections
-        dublin_core = ""
-        dacs_elements = ""
-        physical_desc = ""
-        access_use = ""
-        admin_info = ""
-        
-        current_section = ""
-        for section in sections:
-            if "Dublin Core Elements" in section:
-                dublin_core = section
-                current_section = "dublin_core"
-            elif "DACS Elements" in section:
-                dacs_elements = section
-                current_section = "dacs"
-            elif "Physical Description" in section:
-                physical_desc = section
-                current_section = "physical"
-            elif "Access and Use" in section:
-                access_use = section
-                current_section = "access"
-            elif "Administrative Information" in section:
-                admin_info = section
-                current_section = "admin"
-            elif current_section:  # Append content to current section
-                locals()[current_section] += "\n\n" + section
-        
         # Create a row for each record
         row = {
-            "Timestamp": record['timestamp'],
+            "Timestamp": record.get('timestamp', ''),
             "Title": record.get('title', ''),
             "Description": record.get('description', ''),
             "Material Type": record.get('material_type', ''),
             "Date Created": record.get('date_created', ''),
             "Creator": record.get('creator', ''),
             "Subject Terms": record.get('subject_terms', ''),
-            "Dublin Core Elements": dublin_core,
-            "DACS Elements": dacs_elements,
-            "Physical Description": physical_desc,
-            "Access and Use": access_use,
-            "Administrative Information": admin_info,
-            "Full Metadata": metadata_text
+            "Full Metadata": record.get('metadata', '')
         }
         rows.append(row)
     
@@ -234,22 +195,22 @@ if service == "Metadata Generator":
         # Basic Information
         st.subheader("Basic Information")
         title = st.text_input("Title of Item/Collection*")
-        description = st.text_area("Description*", 
+        description = st.text_area("Description*",
             help="Provide a brief description of the material")
-        
+
         # Material Details
         st.subheader("Material Details")
         col1, col2 = st.columns(2)
         with col1:
             material_type = st.selectbox(
-                "Material Type*", 
-                ["Textual Records", "Photographs", "Audio Recordings", 
-                 "Video Recordings", "Digital Records", "Artifacts", 
+                "Material Type*",
+                ["Textual Records", "Photographs", "Audio Recordings",
+                 "Video Recordings", "Digital Records", "Artifacts",
                  "Correspondence", "Publications", "Maps/Plans", "Artwork"]
             )
         with col2:
             date_created = st.text_input(
-                "Date Created*", 
+                "Date Created*",
                 help="Enter date or date range (YYYY or YYYY-YYYY)"
             )
 
@@ -257,17 +218,17 @@ if service == "Metadata Generator":
         st.subheader("Creator and Subject Information")
         creator = st.text_input("Creator*", help="Enter the name of the creator(s)")
         subject_terms = st.text_area(
-            "Subject Terms*", 
+            "Subject Terms*",
             help="Enter subject terms separated by commas"
         )
 
         submit_button = st.form_submit_button("Generate Metadata")
-        
+
         if submit_button:
             if title and description and material_type and date_created and creator and subject_terms:
                 with st.spinner("Generating metadata..."):
                     metadata = generate_metadata(
-                        title, description, material_type, 
+                        title, description, material_type,
                         date_created, creator, subject_terms
                     )
                     if metadata:
@@ -279,7 +240,7 @@ if service == "Metadata Generator":
     if st.session_state['metadata_history']:
         st.markdown("### Export Options")
         col1, col2 = st.columns(2)
-        
+
         with col1:
             csv_data = export_metadata_to_csv(st.session_state['metadata_history'])
             st.download_button(
@@ -289,7 +250,7 @@ if service == "Metadata Generator":
                 mime="text/csv",
                 key="csv_download"
             )
-        
+
         with col2:
             json_data = export_metadata_to_json(st.session_state['metadata_history'])
             st.download_button(
