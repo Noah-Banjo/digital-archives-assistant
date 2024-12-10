@@ -1,6 +1,5 @@
 streamlit
 openai
 SpeechRecognition
-pyaudio
 numpy
 pandas
